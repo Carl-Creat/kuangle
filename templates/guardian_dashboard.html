@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>家长控制台 - 旷了吗</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif; }
+        .gradient-hero { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .student-card { transition: all 0.2s; }
+        .status-ok { background: #d1fae5; color: #065f46; }
+        .status-danger { background: #fee2e2; color: #991b1b; }
+        .status-pending { background: #fef3c7; color: #92400e; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+    <!-- 顶部导航 -->
+    <div class="gradient-hero text-white px-4 py-4 sticky top-0 z-50 shadow-lg">
+        <div class="max-w-lg mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <span class="text-2xl">👨‍👩‍👧</span>
+                <div>
+                    <h1 class="font-bold">家长守护中心</h1>
+                    <p class="text-xs opacity-80" id="greeting">你好</p>
+                </div>
+            </div>
+            <a href="/logout" class="opacity-80 hover:opacity-100 text-sm">退出</a>
+        </div>
+    </div>
+
+    <div class="max-w-lg mx-auto px-4 py-4 space-y-4">
+
+        <!-- 提醒设置说明 -->
+        <div class="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-sm text-blue-700">
+            💡 <strong>使用提示：</strong>请让您的孩子先注册「旷了吗」学生账号，然后在孩子端绑定您（家长）的用户名即可开始守护。
+        </div>
+
+        <!-- 被监护学生列表 -->
+        <div>
+            <h2 class="font-bold text-gray-800 flex items-center gap-2 mb-3">
+                <span>🎓</span> 我的孩子
+            </h2>
+            <div id="studentList" class="space-y-3">
+                <div class="text-center py-10 text-gray-400 bg-white rounded-2xl shadow-sm">
+                    <div class="text-4xl mb-2">🤔</div>
+                    <p class="text-sm">暂无绑定的孩子</p>
+                    <p class="text-xs mt-1">等待孩子绑定您的账号</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 今日提醒 -->
+        <div class="bg-white rounded-2xl shadow-sm p-5">
+            <h2 class="font-bold text-gray-800 flex items-center gap-2 mb-3">
+                <span>🔔</span> 今日提醒
+            </h2>
+            <div id="todayAlerts" class="space-y-2 text-sm">
+                <div class="text-gray-400 text-center py-4">暂无提醒</div>
+            </div>
+        </div>
+
+        <!-- 通知设置 -->
+        <div class="bg-white rounded-2xl shadow-sm p-5">
+            <h2 class="font-bold text-gray-800 flex items-center gap-2 mb-3">
+                <span>⚙️</span> 通知设置
+            </h2>
+            <div class="space-y-3 text-sm">
+                <div class="flex justify-between items-center">
+                    <span>邮件通知</span>
+                    <span class="text-green-600 font-medium">✅ 已开启</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span>微信推送（Server酱）</span>
+                    <span class="text-gray-400">未配置</span>
+                </div>
+                <p class="text-xs text-gray-400 mt-2">配置 Server酱 可获得微信实时推送。<a href="https://sct.ftqq.com" target="_blank" class="text-purple-600">立即获取 SCKEY →</a></p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 底部导航 -->
+    <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2 z-50">
+        <div class="max-w-lg mx-auto flex justify-around text-xs text-gray-400">
+            <div class="flex flex-col items-center gap-1 text-purple-600">
+                <span class="text-lg">🏠</span><span>首页</span>
+            </div>
+            <div class="flex flex-col items-center gap-1">
+                <span class="text-lg">👨‍👩‍👧</span><span>孩子</span>
+            </div>
+            <div class="flex flex-col items-center gap-1">
+                <span class="text-lg">🔔</span><span>提醒</span>
+            </div>
+            <div class="flex flex-col items-center gap-1">
+                <span class="text-lg">👤</span><span>设置</span>
+            </div>
+        </div>
+    </div>
+    <div class="h-16"></div>
+
+    <script>
+    async function loadStudents() {
+        const res = await fetch('/api/guardian/students');
+        const students = await res.json();
+        const list = document.getElementById('studentList');
+        const alerts = document.getElementById('todayAlerts');
+        const alertsData = [];
+
+        if (students.length === 0) {
+            list.innerHTML = `
+                <div class="text-center py-10 text-gray-400 bg-white rounded-2xl shadow-sm">
+                    <div class="text-4xl mb-2">🤔</div>
+                    <p class="text-sm">暂无绑定的孩子</p>
+                    <p class="text-xs mt-1">等待孩子绑定您的账号</p>
+                </div>`;
+            alerts.innerHTML = '<div class="text-gray-400 text-center py-4">暂无提醒</div>';
+            return;
+        }
+
+        list.innerHTML = students.map(s => {
+            const totalCourses = s.today_schedules.length;
+            const checkedCourses = s.today_schedules.filter(c => c.checked_in).length;
+            const pendingCourses = s.today_schedules.filter(c => !c.checked_in).length;
+            const status = pendingCourses === 0 && totalCourses > 0 ? 'safe' : pendingCourses > 0 ? 'warning' : 'none';
+
+            s.today_schedules.forEach(c => {
+                if (!c.checked_in) {
+                    alertsData.push({ student: s.student_name, course: c.course_name, time: c.start_time });
+                }
+            });
+
+            return `
+            <div class="student-card bg-white rounded-2xl shadow-sm p-4 border-l-4 ${status === 'safe' ? 'border-green-500' : status === 'warning' ? 'border-yellow-400' : 'border-gray-300'}">
+                <div class="flex justify-between items-start mb-3">
+                    <div>
+                        <h3 class="font-bold text-gray-800 flex items-center gap-2">
+                            🎓 ${s.student_name}
+                        </h3>
+                        <p class="text-xs text-gray-400 mt-0.5">提醒延迟：${s.alert_delay}分钟</p>
+                    </div>
+                    <span class="text-xs px-2 py-1 rounded-full ${status === 'safe' ? 'status-ok' : status === 'warning' ? 'status-pending' : 'text-gray-400 bg-gray-100'}">
+                        ${status === 'safe' ? '✅ 今日已全部签到' : status === 'warning' ? '⚠️ 待签到' : '暂无课程'}
+                    </span>
+                </div>
+                <div class="space-y-2">
+                    ${s.today_schedules.length === 0 ? '<p class="text-xs text-gray-400">今日无课程</p>' :
+                    s.today_schedules.map(c => `
+                        <div class="flex justify-between items-center text-sm py-1 border-b border-gray-50 last:border-0">
+                            <div>
+                                <span class="font-medium">${c.course_name}</span>
+                                <span class="text-xs text-gray-400 ml-2">${c.start_time}</span>
+                            </div>
+                            <span class="text-xs ${c.checked_in ? 'text-green-600' : 'text-red-500'}">
+                                ${c.checked_in ? '✅ 已到' : '❌ 未到'}
+                            </span>
+                        </div>
+                    `).join('')}
+                </div>
+                ${checkedCourses > 0 ? `<p class="text-xs text-gray-400 mt-2">今日 ${checkedCourses}/${totalCourses} 节课已签到</p>` : ''}
+            </div>`;
+        }).join('');
+
+        // 渲染提醒
+        if (alertsData.length === 0) {
+            alerts.innerHTML = '<div class="text-gray-400 text-center py-4">✅ 目前一切正常，无待处理提醒</div>';
+        } else {
+            alerts.innerHTML = alertsData.map(a => `
+                <div class="flex items-start gap-3 p-3 bg-red-50 rounded-xl border border-red-100">
+                    <span class="text-xl">🚨</span>
+                    <div>
+                        <p class="text-sm font-medium text-red-700">${a.student} 的 ${a.course_name}（${a.time}）尚未签到</p>
+                        <p class="text-xs text-red-400 mt-0.5">请确认孩子是否安全到达教室</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+
+    loadStudents();
+    </script>
+</body>
+</html>
