@@ -1,0 +1,127 @@
+name: Build Windows Executable
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号 (如 1.0.0)'
+        required: false
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\pip\Cache
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install PyInstaller
+        run: pip install pyinstaller
+
+      - name: Build executable
+        run: |
+          pyinstaller kuangle.spec --clean --noconfirm
+          if (Test-Path "dist\kuangle") {
+            Write-Host "Build successful: dist\kuangle"
+            Get-ChildItem "dist\kuangle" -Recurse | Measure-Object -Property Length -Sum | ForEach-Object {
+              Write-Host "Total files: $($_.Count), Size: $([math]::Round($_.Sum/1MB, 2)) MB"
+            }
+          } else {
+            Write-Error "Build output not found"
+            exit 1
+          }
+
+      - name: Create data directories in package
+        run: |
+          New-Item -ItemType Directory -Path "dist\kuangle\data" -Force
+          New-Item -ItemType Directory -Path "dist\kuangle\logs" -Force
+          New-Item -ItemType Directory -Path "dist\kuangle\backups" -Force
+          # Copy README and deployment guide
+          Copy-Item "README.md" "dist\kuangle\"
+          Copy-Item "DEPLOY.md" "dist\kuangle\"
+          Copy-Item "一键安装旷了吗.bat" "dist\kuangle\"
+          Copy-Item "启动旷了吗.bat" "dist\kuangle\"
+          # Write version info
+          $version = "${{ github.ref_name }}".Replace("refs/tags/", "")
+          $version | Out-File -FilePath "dist\kuangle\VERSION.txt" -Encoding UTF8
+
+      - name: Create zip archive
+        run: |
+          $version = "${{ github.ref_name }}".Replace("refs/tags/", "")
+          if (-not $version) { $version = "${{ inputs.version }}" }
+          if (-not $version) { $version = "1.0.0" }
+          Compress-Archive -Path "dist\kuangle\*" -DestinationPath "dist\kuangle-$version-windows-portable.zip" -Force
+          Write-Host "Archive created: dist\kuangle-$version-windows-portable.zip"
+          Get-Item "dist\kuangle-$version-windows-portable.zip" | Select-Object Name, @{N='Size(MB)';E={[math]::Round($_.Length/1MB,2)}}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kuangle-windows-${{ github.ref_name }}
+          path: dist/kuangle-*.zip
+          retention-days: 30
+
+      - name: Upload executable folder
+        uses: actions/upload-artifact@v4
+        with:
+          name: kuangle-folder-${{ github.ref_name }}
+          path: dist/kuangle/
+          retention-days: 30
+
+      - name: Get artifact download URL
+        id: artifact
+        run: |
+          $version = "${{ github.ref_name }}".Replace("refs/tags/", "")
+          Write-Host "version=$version" >> $env:GITHUB_OUTPUT
+          Write-Host "artifact_name=kuangle-windows-$version" >> $env:GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/kuangle-*.zip
+          draft: false
+          generate_release_notes: true
+          name: "旷了吗 v${{ github.ref_name }}"
+          body: |
+            # 🎓 旷了吗 v${{ github.ref_name }} - 学生安全签到工具
+
+            ## 📥 下载说明
+
+            下载 `kuangle-windows-portable.zip`，解压后：
+            1. 运行 `一键安装旷了吗.bat` 安装依赖（首次）
+            2. 双击 `启动旷了吗.exe` 开始使用
+            3. 访问 http://localhost:5000
+
+            ## ✨ 新版本特性
+
+            请查看 [CHANGELOG.md](CHANGELOG.md)
+
+            ## ⚠️ 重要提示
+
+            - 数据库文件保存在 `data/kuangle.db`，定期备份此文件
+            - 首次使用请先注册账号（选"学生"角色）
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
