@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学生控制台 - 旷了吗</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif; }
+        .gradient-hero { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .status-chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+        .status-checked_in { background: #d1fae5; color: #065f46; }
+        .status-late { background: #fef3c7; color: #92400e; }
+        .status-missed { background: #fee2e2; color: #991b1b; }
+        .status-pending { background: #e0e7ff; color: #3730a3; }
+        .course-card { transition: all 0.2s; }
+        .course-card:active { transform: scale(0.98); }
+        .pulse-ring { animation: ring 2s infinite; }
+        @keyframes ring { 0% { box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(102, 126, 234, 0); } 100% { box-shadow: 0 0 0 0 rgba(102, 126, 234, 0); } }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+    <!-- 顶部导航 -->
+    <div class="gradient-hero text-white px-4 py-4 sticky top-0 z-50 shadow-lg">
+        <div class="max-w-lg mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <span class="text-2xl">📚</span>
+                <div>
+                    <h1 class="font-bold">旷了吗</h1>
+                    <p class="text-xs opacity-80">你好，<span id="username">学生</span></p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3 text-sm">
+                <a href="/logout" class="opacity-80 hover:opacity-100">退出</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-lg mx-auto px-4 py-4 space-y-4">
+
+        <!-- 今日概览卡片 -->
+        <div class="bg-white rounded-2xl shadow-sm p-5">
+            <div class="flex justify-between items-center mb-3">
+                <h2 class="font-bold text-gray-800 flex items-center gap-2">
+                    <span>📅</span> 今日概览
+                </h2>
+                <span class="text-sm text-gray-400" id="todayDate"></span>
+            </div>
+            <div class="grid grid-cols-3 gap-3 text-center">
+                <div class="bg-green-50 rounded-xl p-3">
+                    <div class="text-2xl font-bold text-green-600" id="statChecked">0</div>
+                    <div class="text-xs text-gray-500 mt-1">已签到</div>
+                </div>
+                <div class="bg-yellow-50 rounded-xl p-3">
+                    <div class="text-2xl font-bold text-yellow-600" id="statPending">0</div>
+                    <div class="text-xs text-gray-500 mt-1">待签到</div>
+                </div>
+                <div class="bg-red-50 rounded-xl p-3">
+                    <div class="text-2xl font-bold text-red-500" id="statMissed">0</div>
+                    <div class="text-xs text-gray-500 mt-1">已超时</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 本周出勤率 -->
+        <div class="bg-white rounded-2xl shadow-sm p-5">
+            <h2 class="font-bold text-gray-800 flex items-center gap-2 mb-3">
+                <span>📊</span> 本周出勤
+            </h2>
+            <div class="flex items-center gap-4">
+                <div class="relative w-20 h-20">
+                    <svg class="w-20 h-20 transform -rotate-90">
+                        <circle cx="40" cy="40" r="35" stroke="#e5e7eb" stroke-width="6" fill="none"/>
+                        <circle id="rateCircle" cx="40" cy="40" r="35" stroke="url(#grad)" stroke-width="6" fill="none"
+                            stroke-dasharray="220" stroke-dashoffset="0" stroke-linecap="round"/>
+                        <defs>
+                            <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#667eea"/>
+                                <stop offset="100%" stop-color="#764ba2"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <span class="text-lg font-bold text-gray-800" id="weekRate">--</span>
+                    </div>
+                </div>
+                <div class="text-sm space-y-1">
+                    <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-green-500"></span>准时 <span class="font-bold" id="weekOnTime">0</span> 次</div>
+                    <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-yellow-400"></span>迟到 <span class="font-bold" id="weekLate">0</span> 次</div>
+                    <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-red-400"></span>旷课 <span class="font-bold" id="weekMissed">0</span> 次</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 今日课程列表 -->
+        <div>
+            <div class="flex justify-between items-center mb-3">
+                <h2 class="font-bold text-gray-800 flex items-center gap-2">
+                    <span>🗓️</span> 今日课程
+                </h2>
+                <button onclick="showAddCourse()" class="text-purple-600 text-sm font-medium flex items-center gap-1">
+                    <span>+</span> 添加课程
+                </button>
+            </div>
+            <div id="courseList" class="space-y-3">
+                <div class="text-center py-8 text-gray-400">
+                    <div class="text-4xl mb-2">📭</div>
+                    <p class="text-sm">暂无今日课程</p>
+                    <p class="text-xs mt-1">点击上方「添加课程」设置今日课表</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 监护人管理 -->
+        <div class="bg-white rounded-2xl shadow-sm p-5">
+            <h2 class="font-bold text-gray-800 flex items-center gap-2 mb-3">
+                <span>👨‍👩‍👧</span> 监护人
+            </h2>
+            <div id="guardianList" class="space-y-2 mb-3">
+                <div class="text-center py-4 text-gray-400 text-sm" id="guardianEmpty">
+                    还未绑定监护人
+                </div>
+            </div>
+            <button onclick="showBindGuardian()" class="w-full border-2 border-dashed border-gray-300 text-gray-500 rounded-xl py-3 text-sm hover:border-purple-400 hover:text-purple-600 transition">
+                + 绑定监护人
+            </button>
+        </div>
+
+    </div>
+
+    <!-- 底部导航 -->
+    <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2 z-50">
+        <div class="max-w-lg mx-auto flex justify-around text-xs text-gray-400">
+            <div class="flex flex-col items-center gap-1 text-purple-600">
+                <span class="text-lg">🏠</span><span>首页</span>
+            </div>
+            <div class="flex flex-col items-center gap-1" onclick="showSchedule()">
+                <span class="text-lg">📅</span><span>课表</span>
+            </div>
+            <div class="flex flex-col items-center gap-1" onclick="showStats()">
+                <span class="text-lg">📊</span><span>统计</span>
+            </div>
+            <div class="flex flex-col items-center gap-1" onclick="showProfile()">
+                <span class="text-lg">👤</span><span>我的</span>
+            </div>
+        </div>
+    </div>
+    <div class="h-16"></div><!-- 底部导航占位 -->
+
+    <!-- 添加课程弹窗 -->
+    <div id="addCourseModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-end justify-center">
+        <div class="bg-white rounded-t-3xl w-full max-w-lg p-6 animate-slide-up">
+            <h3 class="font-bold text-lg mb-4">添加课程</h3>
+            <form id="addCourseForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">课程名称</label>
+                    <input type="text" name="course_name" required placeholder="如：高等数学" class="w-full px-4 py-3 border border-gray-200 rounded-xl">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">开始时间</label>
+                        <input type="time" name="start_time" required class="w-full px-4 py-3 border border-gray-200 rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">结束时间</label>
+                        <input type="time" name="end_time" required class="w-full px-4 py-3 border border-gray-200 rounded-xl">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">上课地点（可选）</label>
+                    <input type="text" name="location" placeholder="如：教学楼A301" class="w-full px-4 py-3 border border-gray-200 rounded-xl">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">重复日期</label>
+                    <div class="flex gap-2 flex-wrap" id="dayCheckboxes">
+                        <label class="day-check flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-full text-sm cursor-pointer hover:bg-purple-50"><input type="checkbox" value="0" class="hidden">周一</label>
+                        <label class="day-check flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-full text-sm cursor-pointer hover:bg-purple-50"><input type="checkbox" value="1" class="hidden">周二</label>
+                        <label class="day-check flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-full text-sm cursor-pointer hover:bg-purple-50"><input type="checkbox" value="2" class="hidden">周三</label>
+                        <label class="day-check flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-full text-sm cursor-pointer hover:bg-purple-50"><input type="checkbox" value="3" class="hidden">周四</label>
+                        <label class="day-check flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-full text-sm cursor-pointer hover:bg-purple-50"><input type="checkbox" value="4" class="hidden">周五</label>
+                        <label class="day-check flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-full text-sm cursor-pointer hover:bg-purple-50"><input type="checkbox" value="5" class="hidden">周六</label>
+                        <label class="day-check flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-full text-sm cursor-pointer hover:bg-purple-50"><input type="checkbox" value="6" class="hidden">周日</label>
+                    </div>
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="button" onclick="closeAddCourse()" class="flex-1 py-3 border border-gray-200 rounded-xl text-gray-500">取消</button>
+                    <button type="submit" class="flex-1 py-3 gradient-hero text-white font-bold rounded-xl">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 绑定监护人弹窗 -->
+    <div id="bindGuardianModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-end justify-center">
+        <div class="bg-white rounded-t-3xl w-full max-w-lg p-6">
+            <h3 class="font-bold text-lg mb-4">绑定监护人</h3>
+            <form id="bindGuardianForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">监护人用户名</label>
+                    <input type="text" name="guardian_username" required placeholder="让监护人先注册家长账号" class="w-full px-4 py-3 border border-gray-200 rounded-xl">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">超时提醒延迟（分钟）</label>
+                    <input type="number" name="alert_delay_minutes" value="15" min="5" max="120" class="w-full px-4 py-3 border border-gray-200 rounded-xl">
+                    <p class="text-xs text-gray-400 mt-1">超过课程开始多少分钟后未签到，才通知监护人</p>
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="button" onclick="closeBindGuardian()" class="flex-1 py-3 border border-gray-200 rounded-xl text-gray-500">取消</button>
+                    <button type="submit" class="flex-1 py-3 gradient-hero text-white font-bold rounded-xl">绑定</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    // ==================== 初始化 ====================
+    const DAY_NAMES = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+    const today = new Date();
+    document.getElementById('todayDate').textContent =
+        `${today.getMonth()+1}月${today.getDate()}日 ${DAY_NAMES[today.getDay() === 0 ? 6 : today.getDay()-1]}`;
+
+    // ==================== 加载今日课程 ====================
+    async function loadTodayCourses() {
+        const res = await fetch('/api/today-schedules');
+        const courses = await res.json();
+        const list = document.getElementById('courseList');
+        let checked = 0, pending = 0, missed = 0;
+
+        if (courses.length === 0) {
+            list.innerHTML = `
+                <div class="text-center py-8 text-gray-400">
+                    <div class="text-4xl mb-2">📭</div>
+                    <p class="text-sm">暂无今日课程</p>
+                    <p class="text-xs mt-1">点击上方「添加课程」设置今日课表</p>
+                </div>`;
+        } else {
+            list.innerHTML = courses.map(c => {
+                if (c.status === 'checked_in' || c.status === 'late') checked++;
+                else if (c.status === 'missed') missed++;
+                else pending++;
+                return buildCourseCard(c);
+            }).join('');
+        }
+
+        document.getElementById('statChecked').textContent = checked;
+        document.getElementById('statPending').textContent = pending;
+        document.getElementById('statMissed').textContent = missed;
+    }
+
+    function buildCourseCard(c) {
+        const statusMap = {
+            checked_in: { cls: 'status-checked_in', label: '✅ 已签', time: '' },
+            late: { cls: 'status-late', label: '⏰ 迟到', time: '' },
+            missed: { cls: 'status-missed', label: '❌ 旷课', time: '' },
+            pending: { cls: 'status-pending', label: '⏳ 待签到', time: '' }
+        };
+        const s = statusMap[c.status] || statusMap.pending;
+        const isActionable = c.status === 'pending' || c.status === 'missed';
+        return `
+        <div class="course-card bg-white rounded-2xl shadow-sm p-4 border-l-4 ${isActionable ? 'border-purple-500 pulse-ring' : 'border-green-500'}">
+            <div class="flex justify-between items-start">
+                <div class="flex-1">
+                    <h3 class="font-bold text-gray-800">${c.course_name}</h3>
+                    <p class="text-sm text-gray-500 mt-0.5">${c.start_time} - ${c.end_time}</p>
+                    ${c.location ? `<p class="text-xs text-gray-400 mt-0.5">📍 ${c.location}</p>` : ''}
+                </div>
+                <div class="text-right flex flex-col items-end gap-1">
+                    <span class="status-chip ${s.cls}">${s.label}</span>
+                    ${isActionable ? `<button onclick="doCheckin(${c.id}, '${c.course_name}')" class="mt-1 bg-purple-600 text-white text-xs px-4 py-1.5 rounded-full font-bold hover:bg-purple-700 active:scale-95 transition">立即签到</button>` : ''}
+                </div>
+            </div>
+        </div>`;
+    }
+
+    // ==================== 签到 ====================
+    async function doCheckin(scheduleId, courseName) {
+        const btn = event.target;
+        btn.disabled = true;
+        btn.textContent = '签到中...';
+        const res = await fetch(`/api/checkin/${scheduleId}`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            btn.textContent = data.status === 'late' ? '已迟到签到 ✓' : '已签到 ✓';
+            btn.className = 'mt-1 bg-green-500 text-white text-xs px-4 py-1.5 rounded-full font-bold';
+            // 重新加载
+            loadTodayCourses();
+            loadWeeklyStats();
+        } else {
+            alert(data.error || '签到失败');
+            btn.disabled = false;
+            btn.textContent = '立即签到';
+        }
+    }
+
+    // ==================== 本周统计 ====================
+    async function loadWeeklyStats() {
+        const res = await fetch('/api/stats/weekly');
+        const s = await res.json();
+        document.getElementById('weekRate').textContent = s.rate + '%';
+        document.getElementById('weekOnTime').textContent = s.on_time;
+        document.getElementById('weekLate').textContent = s.late;
+        document.getElementById('weekMissed').textContent = s.missed;
+        const circle = document.getElementById('rateCircle');
+        const circumference = 2 * Math.PI * 35;
+        circle.style.strokeDashoffset = circumference * (1 - s.rate / 100);
+    }
+
+    // ==================== 添加课程 ====================
+    document.getElementById('addCourseForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const days = [...document.querySelectorAll('#dayCheckboxes input:checked')].map(i => i.value);
+        if (days.length === 0) { alert('请至少选择一个上课日期'); return; }
+
+        const btn = e.target.querySelector('button[type=submit]');
+        btn.disabled = true; btn.textContent = '保存中...';
+
+        for (const day of days) {
+            await fetch('/api/schedules', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    day_of_week: parseInt(day),
+                    course_name: fd.get('course_name'),
+                    start_time: fd.get('start_time'),
+                    end_time: fd.get('end_time'),
+                    location: fd.get('location')
+                })
+            });
+        }
+        closeAddCourse();
+        loadTodayCourses();
+        btn.disabled = false; btn.textContent = '保存';
+    });
+
+    function showAddCourse() {
+        document.getElementById('addCourseModal').classList.remove('hidden');
+        // 默认选中今天
+        const today_dow = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
+        document.querySelectorAll('#dayCheckboxes input').forEach(cb => {
+            cb.checked = parseInt(cb.value) === today_dow;
+        });
+    }
+    function closeAddCourse() {
+        document.getElementById('addCourseModal').classList.add('hidden');
+        document.getElementById('addCourseForm').reset();
+    }
+
+    // 星期选择器样式
+    document.querySelectorAll('.day-check').forEach(label => {
+        const cb = label.querySelector('input');
+        label.addEventListener('click', () => {
+            cb.checked = !cb.checked;
+            label.classList.toggle('bg-purple-100', cb.checked);
+            label.classList.toggle('border-purple-400', cb.checked);
+        });
+    });
+
+    // ==================== 绑定监护人 ====================
+    document.getElementById('bindGuardianForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const btn = e.target.querySelector('button[type=submit]');
+        btn.disabled = true; btn.textContent = '绑定中...';
+        const res = await fetch('/api/guardian/bind', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(Object.fromEntries(fd))
+        });
+        const data = await res.json();
+        alert(data.message);
+        if (data.success) closeBindGuardian();
+        btn.disabled = false; btn.textContent = '绑定';
+        loadGuardians();
+    });
+    function showBindGuardian() { document.getElementById('bindGuardianModal').classList.remove('hidden'); }
+    function closeBindGuardian() { document.getElementById('bindGuardianModal').classList.add('hidden'); document.getElementById('bindGuardianForm').reset(); }
+
+    async function loadGuardians() {
+        // 通过 guardian/students 获取已绑定信息（这里简化为显示空）
+        document.getElementById('guardianEmpty').textContent = '已绑定监护人，超时将自动通知';
+    }
+
+    // ==================== 启动 ====================
+    loadTodayCourses();
+    loadWeeklyStats();
+    loadGuardians();
+    </script>
+</body>
+</html>
