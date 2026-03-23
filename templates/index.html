@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>旷了吗 - 学生安全签到工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif; }
+        .gradient-hero { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .card-hover { transition: all 0.3s; }
+        .card-hover:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.15); }
+        .status-pending { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .btn-primary:hover { opacity: 0.9; transform: scale(1.02); }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+    <!-- 顶部导航 -->
+    <nav class="gradient-hero text-white px-4 py-4 shadow-lg sticky top-0 z-50">
+        <div class="max-w-lg mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <span class="text-2xl">📚</span>
+                <h1 class="text-xl font-bold">旷了吗</h1>
+            </div>
+            <div class="text-sm opacity-80">让学生安全，让家长安心</div>
+        </div>
+    </nav>
+
+    <!-- Hero 区域 -->
+    <div class="gradient-hero text-white px-4 pb-10 pt-6">
+        <div class="max-w-lg mx-auto text-center">
+            <div class="text-6xl mb-4">📚</div>
+            <h2 class="text-2xl font-bold mb-2">你的上课安全助手</h2>
+            <p class="opacity-90 text-sm leading-relaxed">
+                每天签到报平安<br>
+                超时未到课，家长自动收到提醒<br>
+                住校在外，让家人少一点担心
+            </p>
+            <div class="flex justify-center gap-3 mt-6">
+                <a href="/register" class="bg-white text-purple-600 font-bold px-6 py-2.5 rounded-full text-sm hover:opacity-90 transition">
+                    立即注册
+                </a>
+                <a href="/login" class="border-2 border-white text-white font-bold px-6 py-2.5 rounded-full text-sm hover:bg-white/10 transition">
+                    登录
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 功能介绍 -->
+    <div class="max-w-lg mx-auto px-4 py-8 space-y-4">
+        <h3 class="text-lg font-bold text-gray-800 text-center mb-4">✨ 核心功能</h3>
+
+        <div class="bg-white rounded-2xl p-5 shadow-sm card-hover">
+            <div class="flex items-start gap-4">
+                <div class="text-3xl bg-purple-100 rounded-xl p-2">📅</div>
+                <div>
+                    <h4 class="font-bold text-gray-800">课程表管理</h4>
+                    <p class="text-gray-500 text-sm mt-1">自主添加每周课程，系统自动推送到课提醒</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl p-5 shadow-sm card-hover">
+            <div class="flex items-start gap-4">
+                <div class="text-3xl bg-green-100 rounded-xl p-2">✅</div>
+                <div>
+                    <h4 class="font-bold text-gray-800">一键签到</h4>
+                    <p class="text-gray-500 text-sm mt-1">上课前收到推送提醒，点击即时报平安</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl p-5 shadow-sm card-hover">
+            <div class="flex items-start gap-4">
+                <div class="text-3xl bg-red-100 rounded-xl p-2">🚨</div>
+                <div>
+                    <h4 class="font-bold text-gray-800">超时预警</h4>
+                    <p class="text-gray-500 text-sm mt-1">超过课程开始时间未签到，自动通知家长</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl p-5 shadow-sm card-hover">
+            <div class="flex items-start gap-4">
+                <div class="text-3xl bg-blue-100 rounded-xl p-2">👨‍👩‍👧</div>
+                <div>
+                    <h4 class="font-bold text-gray-800">家长监护</h4>
+                    <p class="text-gray-500 text-sm mt-1">绑定监护人，实时查看孩子的到课情况</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl p-5 shadow-sm card-hover">
+            <div class="flex items-start gap-4">
+                <div class="text-3xl bg-yellow-100 rounded-xl p-2">📊</div>
+                <div>
+                    <h4 class="font-bold text-gray-800">签到报表</h4>
+                    <p class="text-gray-500 text-sm mt-1">周报/月报统计，出勤情况一目了然</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 适用人群 -->
+        <div class="bg-purple-50 rounded-2xl p-5 mt-6">
+            <h3 class="font-bold text-purple-700 mb-3 text-center">🎯 适用人群</h3>
+            <div class="grid grid-cols-2 gap-3 text-sm">
+                <div class="flex items-center gap-2">
+                    <span>🎓</span><span>住校大学生</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span>🏠</span><span>独居青年</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span>😟</span><span>担心孩子出勤的家长</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span>🏥</span><span>需要报平安的场景</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部 -->
+    <footer class="text-center text-gray-400 text-xs py-6">
+        <p>© 2026 旷了吗 · 愿每位学子平安到课</p>
+    </footer>
+
+</body>
+</html>
